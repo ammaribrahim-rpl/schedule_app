@@ -25,7 +25,7 @@ class SplashController extends GetxController {
     await Future.delayed(const Duration(milliseconds: 100));
 
     // Initialize Gemini API
-    Gemini.init(apiKey: 'AIzaSyDOFlEMiBvfdsiNaBpySTXNsX6aBW4rJIA');
+    Gemini.init(apiKey: 'AIzaSyDwRIXjAl5GO8KOYEr3sacEqXcRJKXA_9I');
 
     // Wait for splash animation
     await Future.delayed(const Duration(seconds: 2));
