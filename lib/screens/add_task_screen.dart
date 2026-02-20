@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/schedule_provider.dart';
+import '../theme/app_theme.dart';
 
 class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({super.key});
@@ -25,11 +28,11 @@ class _AddTaskScreenState extends State<AddTaskScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 450),
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.05),
+      begin: const Offset(0, 0.06),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _animController.forward();
@@ -43,7 +46,8 @@ class _AddTaskScreenState extends State<AddTaskScreen>
   }
 
   Future<void> _pickDate() async {
-    final pickedDate = await showDatePicker(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime.now(),
@@ -51,25 +55,38 @@ class _AddTaskScreenState extends State<AddTaskScreen>
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            dialogBackgroundColor: Theme.of(context).colorScheme.surface,
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: isDark
+                  ? const Color(0xFF7C3AED)
+                  : const Color(0xFF5B21B6),
+            ),
           ),
           child: child!,
         );
       },
     );
-    if (pickedDate != null) {
-      setState(() => _selectedDate = pickedDate);
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   Future<void> _pickTime() async {
-    final pickedTime = await showTimePicker(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final picked = await showTimePicker(
       context: context,
       initialTime: _selectedTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: isDark
+                  ? const Color(0xFF7C3AED)
+                  : const Color(0xFF5B21B6),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
-    if (pickedTime != null) {
-      setState(() => _selectedTime = pickedTime);
-    }
+    if (picked != null) setState(() => _selectedTime = picked);
   }
 
   void _saveTask() {
@@ -81,163 +98,159 @@ class _AddTaskScreenState extends State<AddTaskScreen>
         _selectedTime.hour,
         _selectedTime.minute,
       );
-
-      Provider.of<ScheduleProvider>(context, listen: false).addTask(
-        _titleController.text,
-        dateTime,
-      );
-
+      Provider.of<ScheduleProvider>(
+        context,
+        listen: false,
+      ).addTask(_titleController.text, dateTime);
       Navigator.pop(context);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.arrow_back_rounded,
-              size: 18,
-              color: colorScheme.onSurface,
-            ),
-          ),
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0B0715) : const Color(0xFFF0EEFF),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        title: Text(
-          'New Task',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: SlideTransition(
-          position: _slideAnim,
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // — Section: Task Details
-                  _SectionLabel(label: 'Task Details'),
-                  const SizedBox(height: 12),
-
-                  TextFormField(
-                    controller: _titleController,
-                    autofocus: true,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                    ),
-                    maxLines: 3,
-                    minLines: 1,
-                    decoration: InputDecoration(
-                      hintText: 'What needs to be done?',
-                      hintStyle: TextStyle(
-                        color: colorScheme.onSurface.withOpacity(0.3),
-                      ),
-                      filled: true,
-                      fillColor: colorScheme.surfaceVariant.withOpacity(0.5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                            color: colorScheme.primary, width: 1.5),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                            color: colorScheme.error, width: 1.5),
-                      ),
-                      contentPadding: const EdgeInsets.all(16),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a task title';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // — Section: Schedule
-                  _SectionLabel(label: 'Schedule'),
-                  const SizedBox(height: 12),
-
-                  // Date Picker
-                  _PickerTile(
-                    onTap: _pickDate,
-                    icon: Icons.calendar_today_rounded,
-                    label: 'Date',
-                    value: DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Time Picker
-                  _PickerTile(
-                    onTap: _pickTime,
-                    icon: Icons.schedule_rounded,
-                    label: 'Time',
-                    value: _selectedTime.format(context),
-                  ),
-
-                  const SizedBox(height: 36),
-
-                  // — Save Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _saveTask,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: colorScheme.onPrimary,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+        child: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnim,
+            child: SlideTransition(
+              position: _slideAnim,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Header ───────────────────────────────────────────
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                      decoration: const BoxDecoration(
+                        gradient: AppTheme.bannerGradient,
+                        borderRadius: BorderRadius.vertical(
+                          bottom: Radius.circular(24),
                         ),
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.check_rounded, size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Save Task',
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              color: colorScheme.onPrimary,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.4,
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.2),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              'New Task',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ],
+
+                    // ── Form ─────────────────────────────────────────────
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _SectionLabel('Task Details', isDark: isDark),
+                            const SizedBox(height: 12),
+
+                            // Task title field
+                            TextFormField(
+                              controller: _titleController,
+                              autofocus: true,
+                              maxLines: 3,
+                              minLines: 2,
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: isDark
+                                    ? const Color(0xFFE9D8FF)
+                                    : const Color(0xFF1A0833),
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'What needs to be done?',
+                                hintStyle: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: isDark
+                                      ? const Color(0xFF7B5EB0)
+                                      : const Color(0xFFAB8FD4),
+                                ),
+                              ),
+                              validator: (v) => (v == null || v.isEmpty)
+                                  ? 'Please enter a task title'
+                                  : null,
+                            ),
+
+                            const SizedBox(height: 28),
+
+                            _SectionLabel('Schedule', isDark: isDark),
+                            const SizedBox(height: 12),
+
+                            // Side-by-side date + time pickers
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _PickerCard(
+                                    onTap: _pickDate,
+                                    icon: Icons.calendar_month_rounded,
+                                    label: 'Date',
+                                    value: DateFormat(
+                                      'MMM d, EEE',
+                                    ).format(_selectedDate),
+                                    isDark: isDark,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _PickerCard(
+                                    onTap: _pickTime,
+                                    icon: Icons.access_time_rounded,
+                                    label: 'Time',
+                                    value: _selectedTime.format(context),
+                                    isDark: isDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 36),
+
+                            // Save button
+                            _GradientSaveButton(onTap: _saveTask),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -247,96 +260,141 @@ class _AddTaskScreenState extends State<AddTaskScreen>
   }
 }
 
-// ─────────────────────────────────────────────
-// HELPER WIDGETS
-// ─────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel({required this.label});
+  final String text;
+  final bool isDark;
+  const _SectionLabel(this.text, {required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      label.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-          ),
+      text.toUpperCase(),
+      style: GoogleFonts.poppins(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: isDark ? const Color(0xFF7B5EB0) : const Color(0xFFAB8FD4),
+      ),
     );
   }
 }
 
-class _PickerTile extends StatelessWidget {
+class _PickerCard extends StatelessWidget {
   final VoidCallback onTap;
   final IconData icon;
   final String label;
   final String value;
+  final bool isDark;
 
-  const _PickerTile({
+  const _PickerCard({
     required this.onTap,
     required this.icon,
     required this.label,
     required this.value,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
+    final accent = isDark ? const Color(0xFF7C3AED) : const Color(0xFF5B21B6);
+    final cardBg = isDark ? const Color(0xFF160D2A) : const Color(0xFFEDE9FF);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceVariant.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(12),
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withOpacity(0.2)),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                gradient: isDark
+                    ? AppTheme.primaryGradientDark
+                    : AppTheme.primaryGradientLight,
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                size: 16,
-                color: colorScheme.primary,
+              child: Icon(icon, size: 16, color: Colors.white),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: accent.withOpacity(0.7),
+                letterSpacing: 0.3,
               ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.45),
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? const Color(0xFFE9D8FF)
+                    : const Color(0xFF1A0833),
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GradientSaveButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _GradientSaveButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 54,
+        decoration: BoxDecoration(
+          gradient: isDark
+              ? AppTheme.primaryGradientDark
+              : AppTheme.primaryGradientLight,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  (isDark ? const Color(0xFF7C3AED) : const Color(0xFF5B21B6))
+                      .withOpacity(0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.white,
               size: 18,
-              color: colorScheme.onSurface.withOpacity(0.3),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Save Task',
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
           ],
         ),

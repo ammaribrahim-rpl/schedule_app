@@ -3,7 +3,7 @@ import '../models/task_model.dart';
 import 'package:intl/intl.dart';
 
 class GeminiService {
-  static const String _apiKey = 'AIzaSyDwRIXjAl5GO8KOYEr3sacEqXcRJKXA_9I';
+  static const String _apiKey = 'AIzaSyBjCRYXDykbPLXZKiG4QXGPfliMKu5G3fU';
 
   late final GenerativeModel _model;
 

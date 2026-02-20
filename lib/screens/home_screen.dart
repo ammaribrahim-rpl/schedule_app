@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../providers/schedule_provider.dart';
+import '../theme/app_theme.dart';
 import 'add_task_screen.dart';
 import 'profile_screen.dart';
 import 'result_screen.dart';
@@ -16,142 +20,319 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  void _onItemTapped(int index) {
+  void _onTabTapped(int index) {
     if (index == 2) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+        MaterialPageRoute(builder: (_) => const ProfileScreen()),
       );
     } else {
-      setState(() {
-        _selectedIndex = index;
-      });
+      setState(() => _selectedIndex = index);
     }
+  }
+
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String _firstName() {
+    final user = FirebaseAuth.instance.currentUser;
+    final name = user?.displayName?.isNotEmpty == true
+        ? user!.displayName!
+        : user?.email?.split('@').first ?? 'there';
+    return name.split(' ').first;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF0B0715) : const Color(0xFFF0EEFF);
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: bg,
+      body: SafeArea(
+        child: Column(
           children: [
-            Text(
-              _selectedIndex == 0 ? 'My Tasks' : 'History',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.5,
-                color: colorScheme.onSurface,
-              ),
+            // ── Inline greeting header ───────────────────────────────────
+            _GreetingHeader(
+              greeting: _greeting(),
+              name: _firstName(),
+              tabLabel: _selectedIndex == 0 ? 'My Tasks' : 'History',
+              isDark: isDark,
             ),
-            Text(
-              DateFormat('EEEE, MMMM d').format(DateTime.now()),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.45),
-              ),
+
+            // ── Body ─────────────────────────────────────────────────────
+            Expanded(
+              child: _selectedIndex == 0
+                  ? const TaskListTab()
+                  : const HistoryTab(),
             ),
           ],
         ),
-        toolbarHeight: 64,
       ),
-      body: _selectedIndex == 0 ? const TaskListTab() : const HistoryTab(),
+
+      // ── FAB ─────────────────────────────────────────────────────────────
       floatingActionButton: _selectedIndex == 0
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const AddTaskScreen()),
-                );
-              },
-              backgroundColor: colorScheme.primary,
-              foregroundColor: colorScheme.onPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+          ? _GradientFAB(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddTaskScreen()),
               ),
-              child: const Icon(Icons.add_rounded, size: 26),
             )
           : null,
-      bottomNavigationBar: Container(
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
+      // ── Floating pill nav ────────────────────────────────────────────────
+      bottomNavigationBar: _FloatingPillNav(
+        selectedIndex: _selectedIndex,
+        onTap: _onTabTapped,
+        isDark: isDark,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GREETING HEADER
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GreetingHeader extends StatelessWidget {
+  final String greeting;
+  final String name;
+  final String tabLabel;
+  final bool isDark;
+
+  const _GreetingHeader({
+    required this.greeting,
+    required this.name,
+    required this.tabLabel,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+      decoration: const BoxDecoration(
+        gradient: AppTheme.bannerGradient,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$greeting, $name 👋',
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            DateFormat('EEEE, MMMM d').format(DateTime.now()),
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.6),
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Sub-label chip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+            ),
+            child: Text(
+              tabLabel,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FLOATING PILL NAV
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FloatingPillNav extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+  final bool isDark;
+
+  const _FloatingPillNav({
+    required this.selectedIndex,
+    required this.onTap,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      (Icons.check_circle_outline_rounded, Icons.check_circle_rounded, 'Tasks'),
+      (Icons.history_outlined, Icons.history_rounded, 'History'),
+      (Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Container(
+        height: 64,
         decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: colorScheme.onSurface.withOpacity(0.07),
-              width: 1,
-            ),
-          ),
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: colorScheme.surface,
-          elevation: 0,
-          selectedItemColor: colorScheme.primary,
-          unselectedItemColor: colorScheme.onSurface.withOpacity(0.35),
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 11,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 11,
-          ),
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.check_circle_outline_rounded),
-              activeIcon: Icon(Icons.check_circle_rounded),
-              label: 'Tasks',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history_rounded),
-              label: 'History',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profile',
+          color: isDark ? const Color(0xFF160D2A) : const Color(0xFFE4DAFF),
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  (isDark ? const Color(0xFF7C3AED) : const Color(0xFF5B21B6))
+                      .withOpacity(0.18),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
             ),
           ],
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(items.length, (i) {
+            final isSelected = i == selectedIndex;
+            final (outlineIcon, filledIcon, label) = items[i];
+            final accentColor = isDark
+                ? const Color(0xFF7C3AED)
+                : const Color(0xFF5B21B6);
+            final dimColor = isDark
+                ? const Color(0xFF5B3A8C)
+                : const Color(0xFFAB8FD4);
+
+            return GestureDetector(
+              onTap: () => onTap(i),
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                padding: isSelected
+                    ? const EdgeInsets.symmetric(horizontal: 20, vertical: 10)
+                    : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: isSelected
+                    ? BoxDecoration(
+                        gradient: isDark
+                            ? AppTheme.primaryGradientDark
+                            : AppTheme.primaryGradientLight,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accentColor.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      )
+                    : null,
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected ? filledIcon : outlineIcon,
+                      size: 20,
+                      color: isSelected ? Colors.white : dimColor,
+                    ),
+                    if (isSelected) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// GRADIENT FAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GradientFAB extends StatelessWidget {
+  final VoidCallback onTap;
+  const _GradientFAB({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 56,
+        height: 56,
+        margin: const EdgeInsets.only(bottom: 72),
+        decoration: BoxDecoration(
+          gradient: isDark
+              ? AppTheme.primaryGradientDark
+              : AppTheme.primaryGradientLight,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  (isDark ? const Color(0xFF7C3AED) : const Color(0xFF5B21B6))
+                      .withOpacity(0.5),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TASK LIST TAB
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 class TaskListTab extends StatelessWidget {
   const TaskListTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final scheduleProvider = Provider.of<ScheduleProvider>(context);
-    final tasks = scheduleProvider.tasks;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final provider = Provider.of<ScheduleProvider>(context);
+    final tasks = provider.tasks;
 
     return Column(
       children: [
         Expanded(
           child: tasks.isEmpty
               ? _EmptyState(
-                  icon: Icons.check_circle_outline_rounded,
+                  icon: Icons.checklist_rounded,
                   title: 'No tasks yet',
                   subtitle: 'Tap + to add your first task',
+                  isDark: isDark,
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   itemCount: tasks.length,
                   itemBuilder: (context, index) {
                     final task = tasks[index];
@@ -159,94 +340,109 @@ class TaskListTab extends StatelessWidget {
                       title: task.title,
                       dateTime: task.dateTime,
                       onDismiss: () {
-                        scheduleProvider.deleteTask(task.id);
+                        provider.deleteTask(task.id);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('Task removed'),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                            content: Text(
+                              'Task removed',
+                              style: GoogleFonts.poppins(fontSize: 13),
                             ),
                           ),
                         );
                       },
                       dismissKey: Key(task.id),
+                      isDark: isDark,
                     );
                   },
                 ),
         ),
 
-        // — Generate Button
+        // ── Generate Insights CTA ────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-          child: SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: tasks.isEmpty || scheduleProvider.isLoading
-                  ? null
-                  : () async {
-                      await scheduleProvider.generateScheduleInsights();
-                      if (context.mounted &&
-                          scheduleProvider.generatedContent != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ResultScreen(
-                              content: scheduleProvider.generatedContent!,
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          child: GestureDetector(
+            onTap: (tasks.isEmpty || provider.isLoading)
+                ? null
+                : () async {
+                    await provider.generateScheduleInsights();
+                    if (context.mounted && provider.generatedContent != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ResultScreen(content: provider.generatedContent!),
+                        ),
+                      );
+                    }
+                  },
+            child: AnimatedOpacity(
+              opacity: (tasks.isEmpty || provider.isLoading) ? 0.45 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                width: double.infinity,
+                height: 54,
+                decoration: BoxDecoration(
+                  gradient: isDark
+                      ? AppTheme.primaryGradientDark
+                      : AppTheme.primaryGradientLight,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          (isDark
+                                  ? const Color(0xFF7C3AED)
+                                  : const Color(0xFF5B21B6))
+                              .withOpacity(tasks.isEmpty ? 0 : 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: provider.isLoading
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                        );
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.primary,
-                foregroundColor: colorScheme.onPrimary,
-                disabledBackgroundColor:
-                    colorScheme.onSurface.withOpacity(0.08),
-                disabledForegroundColor:
-                    colorScheme.onSurface.withOpacity(0.35),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Generating…',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.auto_awesome_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Generate Insights',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
-              child: scheduleProvider.isLoading
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: colorScheme.onSurface.withOpacity(0.4),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Generating...',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.auto_awesome_rounded, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Generate Insights',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: colorScheme.onPrimary,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ],
-                    ),
             ),
           ),
         ),
@@ -255,300 +451,375 @@ class TaskListTab extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // HISTORY TAB
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 class HistoryTab extends StatelessWidget {
   const HistoryTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final scheduleProvider = Provider.of<ScheduleProvider>(context);
-    final history = scheduleProvider.history;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final provider = Provider.of<ScheduleProvider>(context);
+    final history = provider.history;
 
-    return history.isEmpty
-        ? _EmptyState(
-            icon: Icons.history_rounded,
-            title: 'No history yet',
-            subtitle: 'Generated insights will appear here',
-          )
-        : ListView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-            itemCount: history.length,
-            itemBuilder: (context, index) {
-              final item = history[index];
-              final preview = item.content.replaceAll('\n', ' ');
-              return Dismissible(
-                key: Key(item.id),
-                onDismissed: (_) {
-                  scheduleProvider.deleteHistory(item.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('History removed'),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
-                },
-                background: Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: colorScheme.error.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20),
-                  child:
-                      Icon(Icons.delete_outline_rounded, color: colorScheme.error),
+    if (history.isEmpty) {
+      return _EmptyState(
+        icon: Icons.history_rounded,
+        title: 'No history yet',
+        subtitle: 'Generated insights will appear here',
+        isDark: isDark,
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      itemCount: history.length,
+      itemBuilder: (context, index) {
+        final item = history[index];
+        final preview = item.content.replaceAll('\n', ' ');
+        final cardBg = isDark
+            ? const Color(0xFF160D2A)
+            : const Color(0xFFEDE9FF);
+        final accent = isDark
+            ? const Color(0xFF7C3AED)
+            : const Color(0xFF5B21B6);
+
+        return Dismissible(
+          key: Key(item.id),
+          onDismissed: (_) {
+            provider.deleteHistory(item.id);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'History removed',
+                  style: GoogleFonts.poppins(fontSize: 13),
                 ),
-                child: GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ResultScreen(content: item.content),
+              ),
+            );
+          },
+          background: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF7F1D1D), Color(0xFFB91C1C)],
+              ),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: const Icon(
+              Icons.delete_sweep_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          child: GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ResultScreen(content: item.content),
+              ),
+            ),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: accent.withOpacity(0.15), width: 1.2),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      gradient: isDark
+                          ? AppTheme.primaryGradientDark
+                          : AppTheme.primaryGradientLight,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 18,
+                      color: Colors.white,
                     ),
                   ),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceVariant.withOpacity(0.45),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.auto_awesome_rounded,
-                            size: 18,
-                            color: colorScheme.primary,
+                        Text(
+                          DateFormat(
+                            'MMM d, yyyy · HH:mm',
+                          ).format(item.timestamp),
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: accent.withOpacity(0.7),
+                            letterSpacing: 0.2,
                           ),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                DateFormat('MMM d, yyyy · HH:mm')
-                                    .format(item.timestamp),
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.onSurface.withOpacity(0.45),
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                preview.length > 60
-                                    ? '${preview.substring(0, 60)}…'
-                                    : preview,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                        const SizedBox(height: 3),
+                        Text(
+                          preview.length > 58
+                              ? '${preview.substring(0, 58)}…'
+                              : preview,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: isDark
+                                ? const Color(0xFFAB8FD4)
+                                : const Color(0xFF4B2D79),
                           ),
-                        ),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 18,
-                          color: colorScheme.onSurface.withOpacity(0.3),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                ),
-              );
-            },
-          );
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: isDark
+                        ? const Color(0xFF5B3A8C)
+                        : const Color(0xFFAB8FD4),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
-// ─────────────────────────────────────────────
-// TASK CARD WIDGET
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// TASK CARD
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _TaskCard extends StatelessWidget {
   final String title;
   final DateTime dateTime;
   final VoidCallback onDismiss;
   final Key dismissKey;
+  final bool isDark;
 
   const _TaskCard({
     required this.title,
     required this.dateTime,
     required this.onDismiss,
     required this.dismissKey,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final isToday = DateUtils.isSameDay(dateTime, DateTime.now());
     final isPast = dateTime.isBefore(DateTime.now());
+    final accent = isDark ? const Color(0xFF7C3AED) : const Color(0xFF5B21B6);
+    final cardBg = isDark ? const Color(0xFF160D2A) : const Color(0xFFEDE9FF);
 
     return Dismissible(
       key: dismissKey,
       onDismissed: (_) => onDismiss(),
       background: Container(
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: colorScheme.error.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(14),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF7F1D1D), Color(0xFFDC2626)],
+          ),
+          borderRadius: BorderRadius.circular(18),
         ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        child: Icon(Icons.delete_outline_rounded, color: colorScheme.error),
+        child: const Icon(
+          Icons.delete_sweep_rounded,
+          color: Colors.white,
+          size: 22,
+        ),
       ),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceVariant.withOpacity(0.45),
-          borderRadius: BorderRadius.circular(14),
-          border: isToday
-              ? Border.all(
-                  color: colorScheme.primary.withOpacity(0.25), width: 1)
+          color: cardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isToday
+                ? accent.withOpacity(0.45)
+                : accent.withOpacity(0.12),
+            width: isToday ? 1.5 : 1,
+          ),
+          boxShadow: isToday
+              ? [
+                  BoxShadow(
+                    color: accent.withOpacity(0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
               : null,
         ),
-        child: Row(
-          children: [
-            // Left accent indicator
-            Container(
-              width: 4,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isPast
-                    ? colorScheme.onSurface.withOpacity(0.15)
-                    : colorScheme.primary,
-                borderRadius: BorderRadius.circular(2),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              // Left accent bar
+              Container(
+                width: 4,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: isPast
+                      ? null
+                      : (isDark
+                            ? AppTheme.primaryGradientDark
+                            : AppTheme.primaryGradientLight),
+                  color: isPast
+                      ? (isDark
+                            ? const Color(0xFF2D1A4F)
+                            : const Color(0xFFD6C4F0))
+                      : null,
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: isPast
-                          ? colorScheme.onSurface.withOpacity(0.4)
-                          : colorScheme.onSurface,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isPast
+                            ? (isDark
+                                  ? const Color(0xFF5B3A8C)
+                                  : const Color(0xFFAB8FD4))
+                            : (isDark
+                                  ? const Color(0xFFE9D8FF)
+                                  : const Color(0xFF1A0833)),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 12,
-                        color: colorScheme.onSurface.withOpacity(0.35),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        DateFormat('EEE, MMM d · HH:mm').format(dateTime),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.4),
-                          letterSpacing: 0.2,
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          size: 12,
+                          color: isDark
+                              ? const Color(0xFF5B3A8C)
+                              : const Color(0xFFAB8FD4),
                         ),
-                      ),
-                      if (isToday) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(4),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat('EEE, MMM d · HH:mm').format(dateTime),
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: isDark
+                                ? const Color(0xFF5B3A8C)
+                                : const Color(0xFFAB8FD4),
                           ),
-                          child: Text(
-                            'Today',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
+                        ),
+                        if (isToday) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: isDark
+                                  ? AppTheme.primaryGradientDark
+                                  : AppTheme.primaryGradientLight,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Today',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────
-// EMPTY STATE WIDGET
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// EMPTY STATE
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final bool isDark;
 
   const _EmptyState({
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.5),
+              gradient: isDark
+                  ? AppTheme.primaryGradientDark
+                  : AppTheme.primaryGradientLight,
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color:
+                      (isDark
+                              ? const Color(0xFF7C3AED)
+                              : const Color(0xFF5B21B6))
+                          .withOpacity(0.25),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
-            child: Icon(
-              icon,
-              size: 30,
-              color: colorScheme.onSurface.withOpacity(0.25),
-            ),
+            child: Icon(icon, size: 32, color: Colors.white),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Text(
             title,
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: GoogleFonts.poppins(
+              fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: colorScheme.onSurface.withOpacity(0.5),
+              color: isDark ? const Color(0xFFAB8FD4) : const Color(0xFF7B5EB0),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.35),
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: isDark ? const Color(0xFF5B3A8C) : const Color(0xFFAB8FD4),
             ),
           ),
         ],

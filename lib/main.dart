@@ -20,9 +20,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ScheduleProvider()),
-      ],
+      providers: [ChangeNotifierProvider(create: (_) => ScheduleProvider())],
       child: Consumer<ScheduleProvider>(
         builder: (context, scheduleProvider, child) {
           return MaterialApp(
@@ -38,17 +36,17 @@ class MyApp extends StatelessWidget {
                   return Scaffold(
                     backgroundColor:
                         scheduleProvider.themeMode == ThemeMode.dark
-                            ? const Color(0xFF131B2E)
-                            : const Color(0xFFF5F0E8),
+                        ? const Color(0xFF0B0715)
+                        : const Color(0xFFF0EEFF),
                     body: Center(
                       child: SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                          strokeWidth: 2.5,
                           color: scheduleProvider.themeMode == ThemeMode.dark
-                              ? const Color(0xFFC9A84C)
-                              : const Color(0xFF2D4A3E),
+                              ? const Color(0xFF7C3AED)
+                              : const Color(0xFF5B21B6),
                         ),
                       ),
                     ),

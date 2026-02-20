@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../screens/home_screen.dart';
+import '../theme/app_theme.dart';
+import 'auth_widgets.dart';
 import 'register_screen.dart';
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,24 +19,23 @@ class _LoginScreenState extends State<LoginScreen>
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String message = '';
-  bool pass = true;
+  bool _obscure = true;
   bool _isLoading = false;
   late AnimationController _animController;
+  late Animation<double> _scaleAnim;
   late Animation<double> _fadeAnim;
-  late Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 700),
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.06),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    _scaleAnim = Tween<double>(begin: 0.96, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
+    );
     _animController.forward();
   }
 
@@ -46,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  Future<bool> login() async {
+  Future<void> _login() async {
     setState(() => _isLoading = true);
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -57,216 +58,167 @@ class _LoginScreenState extends State<LoginScreen>
         message = 'Login Successful';
         _isLoading = false;
       });
-      return true;
+      if (mounted) {
+        Navigator.pushReplacement(context, _fadeRoute(const HomeScreen()));
+      }
     } catch (e) {
       setState(() {
-        message = 'Login failed. Please check your credentials.';
+        message = 'Incorrect email or password.';
         _isLoading = false;
       });
-      return false;
     }
+  }
+
+  PageRouteBuilder _fadeRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, _) => page,
+      transitionsBuilder: (context, animation, _, child) =>
+          FadeTransition(opacity: animation, child: child),
+      transitionDuration: const Duration(milliseconds: 400),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: SlideTransition(
-            position: _slideAnim,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Spacer(flex: 2),
+      backgroundColor: isDark
+          ? const Color(0xFF0B0715)
+          : const Color(0xFFF0EEFF),
+      body: FadeTransition(
+        opacity: _fadeAnim,
+        child: ScaleTransition(
+          scale: _scaleAnim,
+          child: SafeArea(
+            child: Column(
+              children: [
+                // ── Top gradient banner ──────────────────────────────────
+                _TopBanner(),
 
-                  // — Logo / Brand Mark
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.schedule_rounded,
-                      color: colorScheme.onPrimary,
-                      size: 26,
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // — Headline
-                  Text(
-                    'Welcome\nback.',
-                    style: theme.textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      height: 1.1,
-                      letterSpacing: -1.5,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Sign in to continue to your schedule.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.5),
-                    ),
-                  ),
-
-                  const Spacer(flex: 1),
-
-                  // — Error / Status message
-                  if (message.isNotEmpty) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: message.contains('Successful')
-                            ? colorScheme.primary.withOpacity(0.1)
-                            : colorScheme.error.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: message.contains('Successful')
-                              ? colorScheme.primary.withOpacity(0.3)
-                              : colorScheme.error.withOpacity(0.2),
-                        ),
-                      ),
-                      child: Text(
-                        message,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: message.contains('Successful')
-                              ? colorScheme.primary
-                              : colorScheme.error,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-
-                  // — Email Field
-                  _buildLabel(context, 'Email'),
-                  const SizedBox(height: 8),
-                  _buildTextField(
-                    context,
-                    controller: _emailController,
-                    hint: 'you@example.com',
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // — Password Field
-                  _buildLabel(context, 'Password'),
-                  const SizedBox(height: 8),
-                  _buildTextField(
-                    context,
-                    controller: _passwordController,
-                    hint: '••••••••',
-                    obscure: pass,
-                    suffix: GestureDetector(
-                      onTap: () => setState(() => pass = !pass),
-                      child: Icon(
-                        pass
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        size: 18,
-                        color: colorScheme.onSurface.withOpacity(0.4),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // — Sign In Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () async {
-                              bool isSuccess = await login();
-                              if (isSuccess && mounted) {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => const HomeScreen()),
-                                );
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: colorScheme.onPrimary,
-                        disabledBackgroundColor:
-                            colorScheme.primary.withOpacity(0.4),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: colorScheme.onPrimary,
-                              ),
-                            )
-                          : Text(
-                              'Sign In',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: colorScheme.onPrimary,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // — Register Link
-                  Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                // ── Form card ────────────────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(28, 32, 28, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Don't have an account?",
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurface.withOpacity(0.5),
+                          'Welcome back',
+                          style: GoogleFonts.poppins(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
+                            color: isDark
+                                ? const Color(0xFFE9D8FF)
+                                : const Color(0xFF1A0833),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const RegisterScreen()),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Sign in to manage your schedule.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: isDark
+                                ? const Color(0xFFAB8FD4)
+                                : const Color(0xFF7B5EB0),
                           ),
-                          child: Text(
-                            'Register',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.w600,
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Error / status chip
+                        if (message.isNotEmpty) ...[
+                          AuthStatusBanner(
+                            message: message,
+                            isSuccess: message.contains('Successful'),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+
+                        AuthFieldLabel('Email'),
+                        const SizedBox(height: 8),
+                        _buildField(
+                          controller: _emailController,
+                          hint: 'you@example.com',
+                          keyboardType: TextInputType.emailAddress,
+                          isDark: isDark,
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        AuthFieldLabel('Password'),
+                        const SizedBox(height: 8),
+                        _buildField(
+                          controller: _passwordController,
+                          hint: '••••••••',
+                          obscure: _obscure,
+                          isDark: isDark,
+                          suffix: GestureDetector(
+                            onTap: () => setState(() => _obscure = !_obscure),
+                            child: Icon(
+                              _obscure
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              size: 18,
+                              color: isDark
+                                  ? const Color(0xFF7B5EB0)
+                                  : const Color(0xFFAB8FD4),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 36),
+
+                        // ── Gradient Sign In button ──────────────────────
+                        AuthGradientButton(
+                          label: 'Sign In',
+                          isLoading: _isLoading,
+                          onTap: _isLoading ? null : _login,
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // ── Register link ────────────────────────────────
+                        Center(
+                          child: GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                            ),
+                            child: RichText(
+                              text: TextSpan(
+                                style: GoogleFonts.poppins(fontSize: 13),
+                                children: [
+                                  TextSpan(
+                                    text: "Don't have an account? ",
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? const Color(0xFFAB8FD4)
+                                          : const Color(0xFF7B5EB0),
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'Register',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? const Color(0xFFA78BFA)
+                                          : const Color(0xFF5B21B6),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-
-                  const Spacer(flex: 2),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -274,55 +226,87 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildLabel(BuildContext context, String text) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.6,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-          ),
-    );
-  }
-
-  Widget _buildTextField(
-    BuildContext context, {
+  Widget _buildField({
     required TextEditingController controller,
     required String hint,
     bool obscure = false,
     Widget? suffix,
     TextInputType? keyboardType,
+    required bool isDark,
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
     return TextField(
       controller: controller,
       obscureText: obscure,
       keyboardType: keyboardType,
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurface,
-          ),
+      style: GoogleFonts.poppins(
+        fontSize: 14,
+        color: isDark ? const Color(0xFFE9D8FF) : const Color(0xFF1A0833),
+      ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.3)),
         suffixIcon: suffix != null
-            ? Padding(
-                padding: const EdgeInsets.only(right: 14),
-                child: suffix,
-              )
+            ? Padding(padding: const EdgeInsets.only(right: 14), child: suffix)
             : null,
         suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-        filled: true,
-        fillColor: colorScheme.surfaceVariant.withOpacity(0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOP GRADIENT BANNER
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TopBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(28, 36, 28, 32),
+      decoration: const BoxDecoration(
+        gradient: AppTheme.bannerGradient,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Logo mark
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
+            ),
+            child: const Icon(
+              Icons.bolt_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Planify',
+            style: GoogleFonts.poppins(
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: -1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Your AI-powered schedule assistant',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.65),
+            ),
+          ),
+        ],
       ),
     );
   }

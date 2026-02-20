@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../theme/app_theme.dart';
 
 class ResultScreen extends StatefulWidget {
   final String content;
@@ -21,7 +24,7 @@ class _ResultScreenState extends State<ResultScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 550),
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
@@ -44,7 +47,6 @@ class _ResultScreenState extends State<ResultScreen>
     if (mounted) setState(() => _copied = false);
   }
 
-  // Parse content into sections separated by double newlines or markdown headers
   List<_ContentBlock> _parseContent(String raw) {
     final lines = raw.split('\n');
     final blocks = <_ContentBlock>[];
@@ -52,35 +54,58 @@ class _ResultScreenState extends State<ResultScreen>
 
     for (final line in lines) {
       final trimmed = line.trim();
-
-      // Markdown-style headers (## or **)
       if (trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
         if (buffer.isNotEmpty) {
-          blocks.add(_ContentBlock(type: _BlockType.body, text: buffer.toString().trim()));
+          blocks.add(
+            _ContentBlock(
+              type: _BlockType.body,
+              text: buffer.toString().trim(),
+            ),
+          );
           buffer.clear();
         }
-        blocks.add(_ContentBlock(
-          type: _BlockType.header,
-          text: trimmed.replaceAll(RegExp(r'^#+\s*'), '').replaceAll('**', ''),
-        ));
-      } else if (trimmed.startsWith('**') && trimmed.endsWith('**') && trimmed.length > 4) {
+        blocks.add(
+          _ContentBlock(
+            type: _BlockType.header,
+            text: trimmed
+                .replaceAll(RegExp(r'^#+\s*'), '')
+                .replaceAll('**', ''),
+          ),
+        );
+      } else if (trimmed.startsWith('**') &&
+          trimmed.endsWith('**') &&
+          trimmed.length > 4) {
         if (buffer.isNotEmpty) {
-          blocks.add(_ContentBlock(type: _BlockType.body, text: buffer.toString().trim()));
+          blocks.add(
+            _ContentBlock(
+              type: _BlockType.body,
+              text: buffer.toString().trim(),
+            ),
+          );
           buffer.clear();
         }
-        blocks.add(_ContentBlock(
-          type: _BlockType.header,
-          text: trimmed.replaceAll('**', ''),
-        ));
+        blocks.add(
+          _ContentBlock(
+            type: _BlockType.header,
+            text: trimmed.replaceAll('**', ''),
+          ),
+        );
       } else if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
         if (buffer.isNotEmpty) {
-          blocks.add(_ContentBlock(type: _BlockType.body, text: buffer.toString().trim()));
+          blocks.add(
+            _ContentBlock(
+              type: _BlockType.body,
+              text: buffer.toString().trim(),
+            ),
+          );
           buffer.clear();
         }
-        blocks.add(_ContentBlock(
-          type: _BlockType.bullet,
-          text: trimmed.replaceFirst(RegExp(r'^[-•]\s*'), ''),
-        ));
+        blocks.add(
+          _ContentBlock(
+            type: _BlockType.bullet,
+            text: trimmed.replaceFirst(RegExp(r'^[-•]\s*'), ''),
+          ),
+        );
       } else {
         buffer.writeln(line);
       }
@@ -92,172 +117,187 @@ class _ResultScreenState extends State<ResultScreen>
         blocks.add(_ContentBlock(type: _BlockType.body, text: remaining));
       }
     }
-
     return blocks;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final blocks = _parseContent(widget.content);
+    final accent = isDark ? const Color(0xFF7C3AED) : const Color(0xFF5B21B6);
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.arrow_back_rounded,
-              size: 18,
-              color: colorScheme.onSurface,
-            ),
-          ),
-        ),
-        title: Text(
-          'Insights',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          // Copy button
-          GestureDetector(
-            onTap: _copyToClipboard,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: _copied
-                  ? Container(
-                      key: const ValueKey('check'),
-                      margin: const EdgeInsets.only(right: 14),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.check_rounded,
-                              size: 14, color: colorScheme.primary),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Copied',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Container(
-                      key: const ValueKey('copy'),
-                      margin: const EdgeInsets.only(right: 14),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceVariant.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.copy_rounded,
-                              size: 14,
-                              color: colorScheme.onSurface.withOpacity(0.6)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Copy',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onSurface.withOpacity(0.6),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: SlideTransition(
-          position: _slideAnim,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
+      backgroundColor: isDark
+          ? const Color(0xFF0B0715)
+          : const Color(0xFFF0EEFF),
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: SlideTransition(
+            position: _slideAnim,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ─── Header Banner ─────────────────────────────────────────
+                // ── Full-width gradient ribbon header ────────────────────
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withOpacity(0.07),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: colorScheme.primary.withOpacity(0.15),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                  decoration: const BoxDecoration(
+                    gradient: AppTheme.bannerGradient,
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(28),
                     ),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.auto_awesome_rounded,
-                          size: 18,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'AI-Generated Schedule',
-                              style: theme.textTheme.labelMedium?.copyWith(
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.2),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_back_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              'Insights',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
                                 fontWeight: FontWeight.w700,
-                                color: colorScheme.primary,
-                                letterSpacing: 0.2,
+                                color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Personalized insights based on your tasks',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.primary.withOpacity(0.65),
-                              ),
+                          ),
+                          // Copy button
+                          GestureDetector(
+                            onTap: _copyToClipboard,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 250),
+                              child: _copied
+                                  ? Container(
+                                      key: const ValueKey('check'),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.check_rounded,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Copied',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : Container(
+                                      key: const ValueKey('copy'),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.2),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.copy_rounded,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Copy',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // AI badge
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'AI-Generated Schedule Insights',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Personalized based on your current tasks',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.55),
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                // ─── Parsed Content Blocks ─────────────────────────────────
-                ...blocks.map((block) => _buildBlock(context, block)),
+                // ── Scrollable content ───────────────────────────────────
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                    children: blocks
+                        .map((b) => _buildBlock(context, b, isDark, accent))
+                        .toList(),
+                  ),
+                ),
               ],
             ),
           ),
@@ -266,19 +306,30 @@ class _ResultScreenState extends State<ResultScreen>
     );
   }
 
-  Widget _buildBlock(BuildContext context, _ContentBlock block) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  Widget _buildBlock(
+    BuildContext context,
+    _ContentBlock block,
+    bool isDark,
+    Color accent,
+  ) {
+    final cardBg = isDark ? const Color(0xFF160D2A) : const Color(0xFFEDE9FF);
 
     switch (block.type) {
       case _BlockType.header:
-        return Padding(
-          padding: const EdgeInsets.only(top: 24, bottom: 10),
+        return Container(
+          margin: const EdgeInsets.only(top: 16, bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: accent.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border(left: BorderSide(color: accent, width: 4)),
+          ),
           child: Text(
             block.text,
-            style: theme.textTheme.titleSmall?.copyWith(
+            style: GoogleFonts.poppins(
+              fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: colorScheme.onSurface,
+              color: isDark ? const Color(0xFFE9D8FF) : const Color(0xFF1A0833),
               letterSpacing: -0.2,
             ),
           ),
@@ -286,27 +337,37 @@ class _ResultScreenState extends State<ResultScreen>
 
       case _BlockType.bullet:
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 10),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 6, right: 10),
-                child: Container(
-                  width: 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
+              Container(
+                margin: const EdgeInsets.only(top: 7, right: 10),
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  gradient: isDark
+                      ? AppTheme.primaryGradientDark
+                      : AppTheme.primaryGradientLight,
+                  shape: BoxShape.circle,
                 ),
               ),
               Expanded(
-                child: Text(
-                  block.text,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.8),
-                    height: 1.6,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    block.text,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: isDark
+                          ? const Color(0xFFAB8FD4)
+                          : const Color(0xFF4B2D79),
+                      height: 1.6,
+                    ),
                   ),
                 ),
               ),
@@ -315,13 +376,14 @@ class _ResultScreenState extends State<ResultScreen>
         );
 
       case _BlockType.body:
-      if (block.text.isEmpty) return const SizedBox.shrink();
+        if (block.text.isEmpty) return const SizedBox.shrink();
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Text(
             block.text,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.75),
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: isDark ? const Color(0xFFAB8FD4) : const Color(0xFF4B2D79),
               height: 1.65,
             ),
           ),
